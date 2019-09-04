@@ -40,6 +40,7 @@ public class MainActivity extends SXRActivity implements ActivityCompat.OnReques
                 setMain(new Main());
             } else {
                 Toast.makeText(getApplicationContext(), "Camera permission denied!", Toast.LENGTH_LONG).show();
+                this.finish();
             }
         }
     }
