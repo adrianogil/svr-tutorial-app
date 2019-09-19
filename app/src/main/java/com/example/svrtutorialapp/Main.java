@@ -109,4 +109,10 @@ public class Main extends SXRMain {
 
         return plane;
     }
+
+    @Override
+    public boolean onBackPress() {
+        mContext.getActivity().onBackPressed();
+        return super.onBackPress();
+    }
 }

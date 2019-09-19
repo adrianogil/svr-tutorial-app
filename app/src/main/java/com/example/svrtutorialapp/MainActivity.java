@@ -44,4 +44,10 @@ public class MainActivity extends SXRActivity implements ActivityCompat.OnReques
             }
         }
     }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        this.finish();
+    }
 }
