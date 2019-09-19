@@ -1,13 +1,10 @@
 package com.example.svrtutorialapp;
 
-import android.opengl.GLES30;
-
 import com.samsungxr.SXRContext;
 import com.samsungxr.SXRMain;
 import com.samsungxr.SXRMaterial;
 import com.samsungxr.SXRMesh;
 import com.samsungxr.SXRNode;
-import com.samsungxr.SXRRenderData;
 import com.samsungxr.mixedreality.IMixedReality;
 import com.samsungxr.mixedreality.IMixedRealityEvents;
 import com.samsungxr.mixedreality.IPlaneEvents;
@@ -67,10 +64,18 @@ public class Main extends SXRMain {
 
         @Override
         public void onPlaneGeometryChange(SXRPlane plane) {
-            SXRMesh mesh = new SXRMesh(getSXRContext());
-            mesh.setVertices(plane.get3dPolygonAsArray());
-
-            plane.getOwnerObject().getRenderData().setMesh(mesh);
+            if (plane.getTrackingState() == SXRTrackingState.TRACKING) {
+                SXRNode ownerObject = plane.getOwnerObject();
+                if (ownerObject != null && ownerObject.getChildrenCount() > 0) {
+                    SXRNode quad = ownerObject.getChildByIndex(0);
+                    if (quad != null) {
+                        quad.getTransform().setScale(
+                                plane.getWidth() * 0.9f,
+                                plane.getHeight() * 0.9f,
+                                1f);
+                    }
+                }
+            }
         }
     };
 
@@ -93,20 +98,24 @@ public class Main extends SXRMain {
     };
 
     private SXRNode createPlaneNode() {
+        Log.d(TAG, "create plane node");
         SXRMaterial mat = new SXRMaterial(mContext, SXRMaterial.SXRShaderType.Phong.ID);
         mat.setDiffuseColor(0, 1, 0, 0.5f);
 
-        SXRRenderData renderData = new SXRRenderData(mContext);
-        renderData.disableLight();
-        renderData.setAlphaBlend(true);
-        renderData.setRenderingOrder(SXRRenderData.SXRRenderingOrder.TRANSPARENT);
-        renderData.setDrawMode(GLES30.GL_TRIANGLE_FAN);
-        renderData.setMaterial(mat);
+        // Quad mesh to represent a plane
+        SXRMesh mesh = SXRMesh.createQuad(mContext, "float3 a_position", 1, 1);
 
+        // This object represents a plane in ARCore World
+        SXRNode planeAR = new SXRNode(mContext, mesh, mat);
+        planeAR.setName("Plane");
+        planeAR.getRenderData().disableLight();
+        planeAR.getRenderData().setAlphaBlend(true);
+        // The plane should be rotated once the ARCore initial position is different from SXR
+        planeAR.getTransform().setRotationByAxis(-90, 1, 0, 0);
+
+        // This is the plane that is visualized
         SXRNode plane = new SXRNode(mContext);
-        plane.attachComponent(renderData);
-        plane.setName("Plane");
-
+        plane.addChildObject(planeAR);
         return plane;
     }
 
