@@ -1,10 +1,17 @@
 package com.example.svrtutorialapp;
 
+import android.view.MotionEvent;
+
+import com.samsungxr.ITouchEvents;
 import com.samsungxr.SXRContext;
 import com.samsungxr.SXRMain;
 import com.samsungxr.SXRMaterial;
 import com.samsungxr.SXRMesh;
 import com.samsungxr.SXRNode;
+import com.samsungxr.SXRPicker;
+import com.samsungxr.io.SXRCursorController;
+import com.samsungxr.io.SXRGazeCursorController;
+import com.samsungxr.io.SXRInputManager;
 import com.samsungxr.mixedreality.IMixedReality;
 import com.samsungxr.mixedreality.IMixedRealityEvents;
 import com.samsungxr.mixedreality.IPlaneEvents;
@@ -13,12 +20,15 @@ import com.samsungxr.mixedreality.SXRPlane;
 import com.samsungxr.mixedreality.SXRTrackingState;
 import com.samsungxr.utility.Log;
 
+import java.util.EnumSet;
+
 public class Main extends SXRMain {
 
     private final String TAG = Main.class.getSimpleName();
     private SXRContext mContext;
     private PointCloud mPointCloud;
     private SXRMixedReality mMixedReality;
+    private SXRCursorController mCursorController = null;
 
     @Override
     public void onInit(SXRContext sxrContext) {
@@ -79,9 +89,69 @@ public class Main extends SXRMain {
         }
     };
 
+    private ITouchEvents mTouchEventsHandler = new ITouchEvents() {
+
+        @Override
+        public void onEnter(SXRNode sceneObj, SXRPicker.SXRPickedObject collision) {
+
+        }
+
+        @Override
+        public void onExit(SXRNode sceneObj, SXRPicker.SXRPickedObject collision) {
+
+        }
+
+        @Override
+        public void onTouchStart(SXRNode sceneObj, SXRPicker.SXRPickedObject collision) {
+
+        }
+
+        @Override
+        public void onTouchEnd(SXRNode sceneObj, SXRPicker.SXRPickedObject collision) {
+            Log.d(TAG, "onTouchEnd");
+            final float[] hitPos = collision.hitLocation;
+            Log.d(TAG, "position x: " + hitPos[0]+" y: " + hitPos[1] + " z: " + hitPos[2]);
+        }
+
+        @Override
+        public void onInside(SXRNode sceneObj, SXRPicker.SXRPickedObject collision) {
+
+        }
+
+        @Override
+        public void onMotionOutside(SXRPicker picker, MotionEvent motionEvent) {
+
+        }
+    };
+
     private IMixedRealityEvents mixedRealityEventsListener = new IMixedRealityEvents() {
         @Override
         public void onMixedRealityStart(IMixedReality mr) {
+            mCursorController = null;
+            SXRInputManager inputManager = mContext.getInputManager();
+            final int cursorDepth = 5;
+            final EnumSet<SXRPicker.EventOptions> eventOptions = EnumSet.of(
+                    SXRPicker.EventOptions.SEND_PICK_EVENTS,
+                    SXRPicker.EventOptions.SEND_TOUCH_EVENTS,
+                    SXRPicker.EventOptions.SEND_TO_LISTENERS,
+                    SXRPicker.EventOptions.SEND_TO_HIT_OBJECT);
+
+            inputManager.selectController((newController, oldController) -> {
+                if (mCursorController != null) {
+                    mCursorController.removePickEventListener(mTouchEventsHandler);
+                }
+                newController.addPickEventListener(mTouchEventsHandler);
+                newController.setCursorDepth(cursorDepth);
+                newController.setCursorControl(SXRCursorController.CursorControl.CURSOR_CONSTANT_DEPTH);
+                newController.getPicker().setPickClosest(false);
+                newController.getPicker().setEventOptions(eventOptions);
+                mCursorController = newController;
+                if (newController instanceof SXRGazeCursorController) {
+                    ((SXRGazeCursorController) newController).setTouchScreenDepth(mr.getScreenDepth());
+                    // Don't show any cursor
+                    newController.setCursor(null);
+                }
+            });
         }
 
         @Override
