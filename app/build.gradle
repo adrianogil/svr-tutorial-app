@@ -35,6 +35,10 @@ android {
         pickFirst 'lib/*/libc++_shared.so'
         pickFirst 'lib/*/libgnustl_shared.so'
     }
+    compileOptions {
+        sourceCompatibility = 1.8
+        targetCompatibility = 1.8
+    }
 }
 
 ext.sxrVersion='5.0.1-SNAPSHOT'
