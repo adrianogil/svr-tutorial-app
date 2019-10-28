@@ -193,11 +193,31 @@ public class Main extends SXRMain {
         }
         meanVector.div(TOTAL_SELECTED_POINTS);
 
-        final float[] vertices = new float[]{
-                selectedPoints[0].x(), selectedPoints[0].y(), selectedPoints[0].z(),
-                meanVector.x(), meanVector.y(), meanVector.z(),
-                selectedPoints[1].x(), selectedPoints[1].y(), selectedPoints[1].z(),
-        };
+        final float[] vertices = new float[3*TOTAL_SELECTED_POINTS + 3];
+
+        int nextIndex = 0;
+
+        vertices[0]= meanVector.x();
+        vertices[1]= meanVector.y();
+        vertices[2]= meanVector.z();
+
+        for (int i = 0; i < TOTAL_SELECTED_POINTS; i++)
+        {
+            vertices[3*(i+1) + 0] = selectedPoints[i].x();
+            vertices[3*(i+1) + 1] = selectedPoints[i].y();
+            vertices[3*(i+1) + 2] = selectedPoints[i].z();
+        }
+
+        char[] indices = new char[3*TOTAL_SELECTED_POINTS];
+
+        for (int i = 0; i < TOTAL_SELECTED_POINTS; i++)
+        {
+            nextIndex = (i + 1) % TOTAL_SELECTED_POINTS;
+
+            indices[3*i + 0] = (char) (i+1);
+            indices[3*i + 1] = (char) 0;
+            indices[3*i + 2] = (char) (nextIndex+1);
+        }
 
         SXRNode customMesh = new SXRNode(mContext);
 
@@ -206,9 +226,9 @@ public class Main extends SXRMain {
         final SXRRenderData renderData = new SXRRenderData(mContext);
         final SXRMesh mesh = new SXRMesh(mContext, "float3 a_position");
         mesh.setVertices(vertices);
+        mesh.setIndices(indices);
         renderData.setMesh(mesh);
         renderData.setMaterial(mat);
-        renderData.setDrawMode(GLES30.GL_TRIANGLE_FAN);
 
         customMesh.attachComponent(renderData);
         customMesh.setName("Custom Mesh");
@@ -309,6 +329,8 @@ public class Main extends SXRMain {
                     // Let's generate a custom mesh here
                     SXRNode customMeshNode = createCustomMesh();
                     mContext.getMainScene().addNode(customMeshNode);
+
+                    currentTotalPoints = 0;
                 }
             }
         }
