@@ -1,8 +1,8 @@
 package com.example.svrtutorialapp;
 
 import android.opengl.GLES30;
-
 import com.samsungxr.SXRAndroidResource;
+import com.samsungxr.SXRBoxCollider;
 import com.samsungxr.SXRCameraRig;
 import com.samsungxr.SXRContext;
 import com.samsungxr.SXREventListeners;
@@ -28,7 +28,10 @@ import com.samsungxr.mixedreality.SXRMixedReality;
 import com.samsungxr.mixedreality.SXRPlane;
 import com.samsungxr.mixedreality.SXRTrackingState;
 import com.samsungxr.nodes.SXRSphereNode;
+import com.samsungxr.nodes.SXRCubeNode;
 import com.samsungxr.utility.Log;
+import org.joml.Vector3f;
+
 import org.joml.Vector3f;
 
 import java.util.EnumSet;
@@ -231,6 +234,44 @@ public class Main extends SXRMain {
         return sphere;
     }
 
+    private SXRNode createCube(float[] pose) {
+        Log.d(TAG, "create cube node");
+        SXRCubeNode cube = new SXRCubeNode(mContext, true, new Vector3f(0.2f));
+
+
+        SXRBoxCollider collider = new SXRBoxCollider(mContext);
+        collider.setHalfExtents(0.05f,0.05f,0.05f);
+
+
+        cube.setName("Cube");
+        cube.attachCollider(collider);
+        cube.getRenderData().setMaterial(createBuildingMaterial());
+        cube.getRenderData().disableLight();
+        cube.getRenderData().setAlphaBlend(false);
+        cube.getTransform().setPosition(pose[12], pose[13] + 0.2f , pose[14]);
+
+        // This is the plane that is visualized
+        return cube;
+    }
+
+    private SXRMaterial createBuildingMaterial() {
+        SXRMaterial mat = new SXRMaterial(mContext, new SXRShaderId(BuildingTilingShader.class));
+
+        SXRTexture buildingTexture = mContext.getAssetLoader().loadTexture(new SXRAndroidResource(mContext,
+                R.drawable.generic_bldng));
+
+        SXRTextureParameters textureParameters = new SXRTextureParameters(mContext);
+        textureParameters.setWrapSType(SXRTextureParameters.TextureWrapType.GL_REPEAT);
+        textureParameters.setWrapTType(SXRTextureParameters.TextureWrapType.GL_REPEAT);
+
+        buildingTexture.updateTextureParameters(textureParameters);
+
+        mat.setTexture(BuildingTilingShader.TEXTURE_KEY, buildingTexture);
+        mat.setVec3(BuildingTilingShader.SCALE_KEY, 1.f, 1.f, 1.f);
+
+        return  mat;
+    }
+
     @Override
     public boolean onBackPress() {
         mContext.getActivity().onBackPressed();
@@ -247,6 +288,12 @@ public class Main extends SXRMain {
             }
 
             SXRHitResult hit = mMixedReality.hitTest(pickInfo);
+
+            //if (hit != null) {
+            //    Log.d(TAG, "position x: " + hit.getPose()[12] + " y: " + hit.getPose()[13] + " z: " + hit.getPose()[14]);
+            //    mContext.getMainScene().addNode(createCube(hit.getPose()));
+            //}
+
             if (hit != null && currentTotalPoints < TOTAL_SELECTED_POINTS) {
                 Log.d(TAG, "onTouchEnd - position x: " + hit.getPose()[12] + " y: " + hit.getPose()[13] + " z: " + hit.getPose()[14]);
                 selectedPoints[currentTotalPoints] = new Vector3f(hit.getPose()[12], hit.getPose()[13], hit.getPose()[14]);
