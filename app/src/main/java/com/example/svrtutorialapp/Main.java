@@ -1,5 +1,8 @@
 package com.example.svrtutorialapp;
 
+import android.opengl.GLES30;
+
+import com.samsungxr.SXRAndroidResource;
 import com.samsungxr.SXRCameraRig;
 import com.samsungxr.SXRContext;
 import com.samsungxr.SXREventListeners;
@@ -9,6 +12,11 @@ import com.samsungxr.SXRMesh;
 import com.samsungxr.SXRNode;
 import com.samsungxr.SXRPerspectiveCamera;
 import com.samsungxr.SXRPicker;
+import com.samsungxr.SXRRenderData;
+import com.samsungxr.SXRRenderData.SXRRenderingOrder;
+import com.samsungxr.SXRShaderId;
+import com.samsungxr.SXRTexture;
+import com.samsungxr.SXRTextureParameters;
 import com.samsungxr.io.SXRCursorController;
 import com.samsungxr.io.SXRGazeCursorController;
 import com.samsungxr.io.SXRInputManager;
@@ -19,12 +27,13 @@ import com.samsungxr.mixedreality.SXRHitResult;
 import com.samsungxr.mixedreality.SXRMixedReality;
 import com.samsungxr.mixedreality.SXRPlane;
 import com.samsungxr.mixedreality.SXRTrackingState;
+import com.samsungxr.nodes.SXRSphereNode;
 import com.samsungxr.utility.Log;
+import org.joml.Vector3f;
 
 import java.util.EnumSet;
 
 public class Main extends SXRMain {
-
     private final String TAG = Main.class.getSimpleName();
     private SXRContext mContext;
     private PointCloud mPointCloud;
@@ -32,9 +41,15 @@ public class Main extends SXRMain {
     private SXRCursorController mCursorController = null;
     private TouchHandler mTouchHandler;
     private boolean mIsMono = true;
+    private Vector3f[] selectedPoints;
+    private int currentTotalPoints;
+    private final int TOTAL_SELECTED_POINTS = 6;
 
     @Override
     public void onInit(SXRContext sxrContext) {
+
+        selectedPoints = new Vector3f[TOTAL_SELECTED_POINTS];
+        currentTotalPoints = 0;
 
         mContext = sxrContext;
 
@@ -164,6 +179,58 @@ public class Main extends SXRMain {
         return plane;
     }
 
+    private SXRNode createCustomMesh() {
+        Log.d(TAG, "create custom mesh node");
+        final float width = 2.0f;
+        final float height = 2.0f;
+
+        Vector3f meanVector = new Vector3f(0f, 0f, 0f);
+        for (int i = 0; i < TOTAL_SELECTED_POINTS; i++) {
+            meanVector.add(selectedPoints[i]);
+        }
+        meanVector.div(TOTAL_SELECTED_POINTS);
+
+        final float[] vertices = new float[]{
+                selectedPoints[0].x(), selectedPoints[0].y(), selectedPoints[0].z(),
+                meanVector.x(), meanVector.y(), meanVector.z(),
+                selectedPoints[1].x(), selectedPoints[1].y(), selectedPoints[1].z(),
+        };
+
+        SXRNode customMesh = new SXRNode(mContext);
+
+        SXRMaterial mat = new SXRMaterial(mContext, SXRMaterial.SXRShaderType.Phong.ID);
+        mat.setDiffuseColor(1.0f, 0.0f, 1.0f, 0.5f);
+        final SXRRenderData renderData = new SXRRenderData(mContext);
+        final SXRMesh mesh = new SXRMesh(mContext, "float3 a_position");
+        mesh.setVertices(vertices);
+        renderData.setMesh(mesh);
+        renderData.setMaterial(mat);
+        renderData.setDrawMode(GLES30.GL_TRIANGLE_FAN);
+
+        customMesh.attachComponent(renderData);
+        customMesh.setName("Custom Mesh");
+
+        return customMesh;
+    }
+
+    private SXRNode createPositionSphereMesh(Vector3f position) {
+        Log.d(TAG, "create plane node");
+        SXRNode sphere = new SXRSphereNode(mContext, true, 0.01f);
+        SXRRenderData rdata = sphere.getRenderData();
+        SXRMaterial mtl = new SXRMaterial(mContext, SXRMaterial.SXRShaderType.Phong.ID);
+        mtl.setDiffuseColor(1.0f, 0.0f, 1.0f, 0.5f);
+        sphere.setName("balloon");
+        rdata.setAlphaBlend(true);
+        rdata.setMaterial(mtl);
+        rdata.setRenderingOrder(SXRRenderingOrder.TRANSPARENT);
+        sphere.getTransform().setPosition(
+                position.x(),
+                position.y(),
+                position.z()
+        );
+        return sphere;
+    }
+
     @Override
     public boolean onBackPress() {
         mContext.getActivity().onBackPressed();
@@ -180,8 +247,23 @@ public class Main extends SXRMain {
             }
 
             SXRHitResult hit = mMixedReality.hitTest(pickInfo);
-            if (hit != null)
-                Log.d(TAG, "position x: " + hit.getPose()[12] + " y: " + hit.getPose()[13] + " z: " + hit.getPose()[14]);
+            if (hit != null && currentTotalPoints < TOTAL_SELECTED_POINTS) {
+                Log.d(TAG, "onTouchEnd - position x: " + hit.getPose()[12] + " y: " + hit.getPose()[13] + " z: " + hit.getPose()[14]);
+                selectedPoints[currentTotalPoints] = new Vector3f(hit.getPose()[12], hit.getPose()[13], hit.getPose()[14]);
+
+                SXRNode newSpherePointNode = createPositionSphereMesh(selectedPoints[currentTotalPoints]);
+                mContext.getMainScene().addNode(newSpherePointNode);
+
+                currentTotalPoints++;
+
+                if (currentTotalPoints >= TOTAL_SELECTED_POINTS)
+                {
+                    Log.d(TAG, "onTouchEnd - generating custom mesh");
+                    // Let's generate a custom mesh here
+                    SXRNode customMeshNode = createCustomMesh();
+                    mContext.getMainScene().addNode(customMeshNode);
+                }
+            }
         }
     };
 }
